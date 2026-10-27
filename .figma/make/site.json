@@ -1,0 +1,10 @@
+{
+  "description": "Explore Statistics Korea data on marriage immigrants by region with search, trend and ranking charts, and normalized comparisons across cities, counties, and districts.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
