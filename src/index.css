@@ -1,8 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 @import 'tailwindcss';
 
+@theme {
+  --font-sans: 'Pretendard', sans-serif;
+  --font-serif: 'Pretendard', sans-serif;
+  --font-mono: 'Pretendard', sans-serif;
+}
+
 @layer base {
-  :root { font-family: 'Noto Sans KR', sans-serif; color: #000000; background: #000000; font-synthesis: none; }
+  :root { font-family: 'Pretendard', sans-serif; color: #000000; background: #000000; font-synthesis: none; }
   body { min-width: 320px; min-height: 100vh; }
   button, input, select { font: inherit; }
   button { cursor: pointer; }
@@ -15,13 +21,13 @@ header { height: 76px; padding: 0 max(28px, calc((100vw - 1440px)/2)); backgroun
 .brand-mark svg { width: 20px; stroke: #000000; fill: none; stroke-width: 2; }
 .brand { display: flex; flex-direction: column; line-height: 1.3; }
 .brand strong { font-size: 15px; letter-spacing: -.02em; }
-.brand span { font: 500 10px 'DM Sans'; color: #000000; letter-spacing: .08em; }
+.brand span { font: 500 10px 'Pretendard'; color: #000000; letter-spacing: .08em; }
 .data-badge { margin-left: auto; color: #000000; font-size: 12px; padding: 8px 12px; background: #B8C4B7; border-radius: 20px; border: 1px solid #000000; }
 .data-badge span { display: inline-block; width: 7px; height: 7px; background: #52A3A7; border-radius: 50%; margin-right: 6px; }
 main { max-width: 1440px; margin: auto; padding: 0 28px; }
 .intro { padding: 58px 0 43px; display: flex; align-items: flex-end; justify-content: space-between; gap: 60px; }
 .intro { color: #FFFFFF; }
-.eyebrow { font: 700 11px 'DM Sans'; color: #52A3A7; letter-spacing: .16em; margin: 0 0 13px; }
+.eyebrow { font: 700 11px 'Pretendard'; color: #52A3A7; letter-spacing: .16em; margin: 0 0 13px; }
 .intro h1 { font-size: clamp(30px, 3vw, 46px); line-height: 1.25; letter-spacing: -.055em; margin: 0 0 13px; font-weight: 800; }
 .intro h1 em { color: #52A3A7; font-style: normal; }
 .intro p:last-child { margin: 0; color: #FFFFFF; font-size: 14px; }
@@ -43,22 +49,22 @@ main { max-width: 1440px; margin: auto; padding: 0 28px; }
 .stat-icon.blue { color: #000000; background: #52A3A7; }.stat-icon.purple { color: #FFFFFF; background: #7E8BB5; }.stat-icon.pink { color: #FFFFFF; background: #C34083; }.stat-icon.green { color: #000000; background: #B8C4B7; }
 .stats article > div:nth-child(2) { display: flex; flex-direction: column; }
 .stats span { color: #000000; font-size: 12px; margin-bottom: 3px; }
-.stats strong { font: 700 24px 'DM Sans','Noto Sans KR'; letter-spacing: -.03em; }
-.stats strong small { font: 500 11px 'Noto Sans KR'; color: #000000; margin-left: 4px; }
-.stats i { position: absolute; right: 17px; top: 17px; color: #000000; font: 600 10px 'DM Sans'; font-style: normal; background: #B8C4B7; border-radius: 10px; padding: 4px 7px; }
+.stats strong { font: 700 24px 'Pretendard'; letter-spacing: -.03em; }
+.stats strong small { font: 500 11px 'Pretendard'; color: #000000; margin-left: 4px; }
+.stats i { position: absolute; right: 17px; top: 17px; color: #000000; font: 600 10px 'Pretendard'; font-style: normal; background: #B8C4B7; border-radius: 10px; padding: 4px 7px; }
 .selected-stat > div:nth-child(2) > small { color: #000000; font-size: 10px; margin-top: 3px; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(340px, .8fr); gap: 18px; }
 .card { background: #FFFFFF; border: 1px solid #B8C4B7; border-radius: 18px; padding: 24px; min-width: 0; }
 .trend-card, .normalized-card { border: 0; border-top: 1px solid #000000; border-radius: 0; padding: 20px 0 26px; }
 .trend-card .card-head, .normalized-card .card-head { padding: 0 20px; margin-bottom: 34px; }
-.trend-card h2, .normalized-card h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 23px; line-height: .95; max-width: 280px; }
+.trend-card h2, .normalized-card h2 { font-family: 'Pretendard', sans-serif; font-size: 23px; line-height: .95; max-width: 280px; }
 .trend-card .section-number, .normalized-card .section-number { background: transparent; color: #000000; width: auto; height: auto; align-self: start; margin-top: 3px; }
 .trend-card .card-head p, .normalized-card .card-head p { margin-top: 7px; }
 .trend-card .chart-wrap, .normalized-card .chart-wrap { padding: 0 20px; }
 .trend-card .legend, .normalized-card .legend { margin-left: 20px; margin-right: 20px; }
 .card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 21px; gap: 18px; }
 .card-head > div:first-child { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; }
-.section-number { grid-row: 1 / 3; width: 26px; height: 26px; border-radius: 8px; background: #000000; color: #B8C4B7; font: 700 10px 'DM Sans'; display: grid; place-items: center; }
+.section-number { grid-row: 1 / 3; width: 26px; height: 26px; border-radius: 8px; background: #000000; color: #B8C4B7; font: 700 10px 'Pretendard'; display: grid; place-items: center; }
 .card h2 { font-size: 17px; letter-spacing: -.025em; margin: 1px 0 2px; line-height: 1.3; }
 .card-head p { grid-column: 2; color: #000000; font-size: 11px; margin: 0; }
 .controls { display: flex; gap: 8px; align-items: center; }
@@ -70,13 +76,13 @@ select { border: 1px solid #000000; border-radius: 9px; padding: 7px 28px 7px 10
 .chart-wrap svg { width: 100%; display: block; overflow: visible; }
 .gridline { stroke: #000000; stroke-width: 1; stroke-dasharray: 3 4; }
 .vertical-guide { stroke: #B8C4B7; stroke-width: 1; }
-.axis-text { fill: #000000; font: 500 9px 'DM Sans','Noto Sans KR'; }
+.axis-text { fill: #000000; font: 500 9px 'Pretendard'; }
 .axis-text.label { font-size: 8px; }
 .axis-text.top-label { font-size: 8px; letter-spacing: .04em; text-transform: uppercase; }
 .chart-point { cursor: pointer; transition: r .15s ease; outline: none; }
 .chart-tooltip rect { fill: #000000; }
-.chart-tooltip text { fill: #B8C4B7; font: 500 9px 'Noto Sans KR'; }
-.chart-tooltip .tooltip-value { fill: #C34083; font: 700 11px 'Noto Sans KR'; }
+.chart-tooltip text { fill: #B8C4B7; font: 500 9px 'Pretendard'; }
+.chart-tooltip .tooltip-value { fill: #C34083; font: 700 11px 'Pretendard'; }
 .legend { border-top: 1px solid #B8C4B7; margin-top: 7px; padding-top: 14px; color: #52A3A7; font-size: 10px; display: flex; align-items: center; gap: 6px; }
 .legend > span { width: 8px; height: 8px; border-radius: 50%; }
 .legend small { margin-left: auto; color: #000000; }
@@ -84,13 +90,13 @@ select { border: 1px solid #000000; border-radius: 9px; padding: 7px 28px 7px 10
 .ranking { display: flex; flex-direction: column; gap: 4px; }
 .rank-row { border: 0; width: 100%; display: grid; grid-template-columns: 27px 86px 1fr 48px; align-items: center; gap: 8px; border-radius: 8px; padding: 7px 7px; background: transparent; text-align: left; }
 .rank-row:hover, .rank-row.active { background: #52A3A7; }
-.rank-number { color: #000000; font: 600 9px 'DM Sans'; }
+.rank-number { color: #000000; font: 600 9px 'Pretendard'; }
 .rank-name { display: flex; flex-direction: column; min-width: 0; }
 .rank-name b { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-name small { font-size: 8px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-track { height: 7px; background: #000000; border-radius: 5px; overflow: hidden; }
 .bar-track span { height: 100%; background: #C34083; display: block; border-radius: 5px; }
-.rank-row strong { text-align: right; font: 600 9px 'DM Sans'; color: #52A3A7; }
+.rank-row strong { text-align: right; font: 600 9px 'Pretendard'; color: #52A3A7; }
 .normalized-card { grid-column: 1 / -1; }
 .normalized-card .chart-wrap { max-height: 310px; }
 .type-legend { display: flex; gap: 6px; }
