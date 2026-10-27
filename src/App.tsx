@@ -112,7 +112,7 @@ function SparkLine({
         ))}
         {active !== null && (
           <g className="chart-tooltip" pointerEvents="none">
-            <rect x={tooltipX} y={tooltipY} width="150" height="52" rx="9" />
+            <rect x={tooltipX} y={tooltipY} width="150" height="52" rx="12" />
             <text x={tooltipX + 12} y={tooltipY + 20}>{data[active].name}</text>
             <text x={tooltipX + 12} y={tooltipY + 39} className="tooltip-value" style={{ fill: colors[metric] }}>
               {metricLabel[metric]} {normalized ? values[active].toFixed(3) : `${nf.format(values[active])}명`}
