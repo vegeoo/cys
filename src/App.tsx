@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
 type Metric = 'total' | 'male' | 'female'
 type Region = {
@@ -139,40 +140,119 @@ function Ranking({ data, selected, onSelect }: { data: Region[]; selected: strin
 }
 
 type SensorPoint = { label: string; temperature: number; humidity: number }
+type Reading = { id: string | number; value: number; created_at: string }
+type SerialPort = {
+  readable: ReadableStream<Uint8Array> | null
+  open: (options: { baudRate: number }) => Promise<void>
+  close: () => Promise<void>
+}
+type WebSerialApi = { requestPort: () => Promise<SerialPort> }
+type SerialStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting'
 
-const hourlySensorData: SensorPoint[] = [
-  { label: '00:00', temperature: 21.4, humidity: 58 },
-  { label: '02:00', temperature: 21.1, humidity: 60 },
-  { label: '04:00', temperature: 20.8, humidity: 61 },
-  { label: '06:00', temperature: 21.3, humidity: 59 },
-  { label: '08:00', temperature: 22.7, humidity: 55 },
-  { label: '10:00', temperature: 24.1, humidity: 51 },
-  { label: '12:00', temperature: 25.2, humidity: 47 },
-  { label: '14:00', temperature: 25.8, humidity: 44 },
-  { label: '16:00', temperature: 25.1, humidity: 46 },
-  { label: '18:00', temperature: 24.3, humidity: 49 },
-  { label: '20:00', temperature: 23.6, humidity: 52 },
-  { label: '22:00', temperature: 23.4, humidity: 54 },
-]
+type SupabaseStatus = 'loading' | 'connected' | 'error'
 
-const weeklySensorData: SensorPoint[] = [
-  { label: '월', temperature: 22.8, humidity: 55 },
-  { label: '화', temperature: 23.5, humidity: 52 },
-  { label: '수', temperature: 24.2, humidity: 49 },
-  { label: '목', temperature: 23.9, humidity: 51 },
-  { label: '금', temperature: 25.1, humidity: 46 },
-  { label: '토', temperature: 24.7, humidity: 48 },
-  { label: '일', temperature: 23.4, humidity: 54 },
-]
+function parseReading(value: unknown): Reading | null {
+  if (typeof value !== 'object' || value === null) return null
+  const row = value as Record<string, unknown>
+  const id = row.id
+  if (
+    (typeof row.value !== 'number' && typeof row.value !== 'string') ||
+    (typeof row.value === 'string' && !row.value.trim())
+  ) return null
+  const readingValue = Number(row.value)
+  const createdAt = row.created_at
+  if (
+    (typeof id !== 'string' && typeof id !== 'number') ||
+    !Number.isFinite(readingValue) ||
+    typeof createdAt !== 'string' ||
+    !Number.isFinite(Date.parse(createdAt))
+  ) return null
+  return { id, value: readingValue, created_at: createdAt }
+}
 
-function SensorChart({ data }: { data: SensorPoint[] }) {
+function readingTime(timestamp: string, includeDate = false) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    ...(includeDate ? { month: '2-digit', day: '2-digit' } : {}),
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date(timestamp))
+}
+
+function RawReadingsChart({ data }: { data: Reading[] }) {
+  const [active, setActive] = useState<number | null>(null)
+  const width = 1100
+  const height = 330
+  const pad = { left: 58, right: 24, top: 42, bottom: 45 }
+  const values = data.map((reading) => reading.value)
+  const min = values.length ? Math.min(...values) : 0
+  const max = values.length ? Math.max(...values) : 1
+  const padding = max === min ? Math.max(Math.abs(min) * 0.05, 1) : (max - min) * 0.1
+  const domainMin = min - padding
+  const domainMax = max + padding
+  const x = (index: number) => pad.left + (index * (width - pad.left - pad.right)) / Math.max(data.length - 1, 1)
+  const y = (value: number) => pad.top + ((domainMax - value) / (domainMax - domainMin)) * (height - pad.top - pad.bottom)
+  const points = values.map((value, index) => `${x(index)},${y(value)}`).join(' ')
+  const labelStep = Math.max(1, Math.ceil(data.length / 7))
+  const tooltipX = active === null ? 0 : Math.min(Math.max(x(active) - 75, 8), width - 158)
+  const tooltipY = active === null ? 0 : Math.max(y(values[active]) - 70, 8)
+
+  return (
+    <div className="sensor-chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Supabase 최근 센서 원시값 선 그래프">
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+          const value = domainMax - ratio * (domainMax - domainMin)
+          const tickY = pad.top + ratio * (height - pad.top - pad.bottom)
+          return <g key={ratio}>
+            <line x1={pad.left} y1={tickY} x2={width - pad.right} y2={tickY} className="gridline" />
+            <text x={pad.left - 10} y={tickY + 4} textAnchor="end" className="axis-text">{nf.format(value)}</text>
+          </g>
+        })}
+        {data.map((reading, index) => index % labelStep === 0 || index === data.length - 1 ? (
+          <g key={reading.id}>
+            <line x1={x(index)} y1={pad.top} x2={x(index)} y2={height - pad.bottom} className="vertical-guide" />
+            <text x={x(index)} y={height - 18} textAnchor="middle" className="axis-text">{readingTime(reading.created_at)}</text>
+          </g>
+        ) : null)}
+        {data.length > 1 && <polyline points={points} fill="none" stroke="#52A3A7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+        {data.map((reading, index) => (
+          <g key={`point-${reading.id}`} className="sensor-hit-area" onMouseEnter={() => setActive(index)} onMouseLeave={() => setActive(null)} onClick={() => setActive(index)}>
+            <circle cx={x(index)} cy={y(reading.value)} r={active === index ? 6 : 4} fill="#52A3A7" />
+          </g>
+        ))}
+        {active !== null && (
+          <g className="sensor-tooltip" pointerEvents="none">
+            <rect x={tooltipX} y={tooltipY} width="150" height="52" rx="12" />
+            <text x={tooltipX + 12} y={tooltipY + 20}>{readingTime(data[active].created_at, true)}</text>
+            <text x={tooltipX + 12} y={tooltipY + 40} className="humidity-value">원시 센서값 {nf.format(values[active])}</text>
+          </g>
+        )}
+        {data.length === 0 && <text x={width / 2} y={height / 2} textAnchor="middle" className="axis-text">Supabase에서 센서 데이터를 기다리는 중입니다.</text>}
+      </svg>
+    </div>
+  )
+}
+
+function SensorChart({ data, live = false }: { data: SensorPoint[]; live?: boolean }) {
   const [active, setActive] = useState<number | null>(null)
   const width = 1100
   const height = 330
   const pad = { left: 48, right: 48, top: 42, bottom: 45 }
   const x = (i: number) => pad.left + (i * (width - pad.left - pad.right)) / Math.max(data.length - 1, 1)
-  const tempY = (value: number) => pad.top + ((28 - value) / 10) * (height - pad.top - pad.bottom)
-  const humidityY = (value: number) => pad.top + ((70 - value) / 40) * (height - pad.top - pad.bottom)
+  const temperatureValues = data.map((point) => point.temperature)
+  const humidityValues = data.map((point) => point.humidity)
+  const getDomain = (values: number[], fallback: [number, number], minimumPadding: number): [number, number] => {
+    if (!live || values.length === 0) return fallback
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const padding = Math.max((max - min) * 0.1, minimumPadding)
+    return [Math.floor(min - padding), Math.ceil(max + padding)]
+  }
+  const [tempMin, tempMax] = getDomain(temperatureValues, [18, 28], 1)
+  const [humidityMin, humidityMax] = getDomain(humidityValues, [30, 70], 2)
+  const tempY = (value: number) => pad.top + ((tempMax - value) / (tempMax - tempMin)) * (height - pad.top - pad.bottom)
+  const humidityY = (value: number) => pad.top + ((humidityMax - value) / (humidityMax - humidityMin)) * (height - pad.top - pad.bottom)
   const tempPoints = data.map((point, i) => `${x(i)},${tempY(point.temperature)}`).join(' ')
   const humidityPoints = data.map((point, i) => `${x(i)},${humidityY(point.humidity)}`).join(' ')
   const tooltipX = active === null ? 0 : Math.min(Math.max(x(active) - 75, 8), width - 158)
@@ -188,10 +268,12 @@ function SensorChart({ data }: { data: SensorPoint[] }) {
         ))}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
           const y = pad.top + ratio * (height - pad.top - pad.bottom)
+          const temperatureTick = tempMax - ratio * (tempMax - tempMin)
+          const humidityTick = humidityMax - ratio * (humidityMax - humidityMin)
           return <g key={ratio}>
             <line x1={pad.left} y1={y} x2={width - pad.right} y2={y} className="gridline" />
-            <text x={pad.left - 10} y={y + 4} textAnchor="end" className="axis-text">{Math.round(28 - ratio * 10)}°</text>
-            <text x={width - pad.right + 10} y={y + 4} textAnchor="start" className="axis-text">{Math.round(70 - ratio * 40)}%</text>
+            <text x={pad.left - 10} y={y + 4} textAnchor="end" className="axis-text">{temperatureTick.toFixed(live ? 1 : 0)}°</text>
+            <text x={width - pad.right + 10} y={y + 4} textAnchor="start" className="axis-text">{humidityTick.toFixed(live ? 1 : 0)}%</text>
           </g>
         })}
         <polyline points={humidityPoints} fill="none" stroke="#52A3A7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
@@ -213,9 +295,12 @@ function SensorChart({ data }: { data: SensorPoint[] }) {
           <g className="sensor-tooltip" pointerEvents="none">
             <rect x={tooltipX} y="4" width="150" height="64" rx="12" />
             <text x={tooltipX + 12} y="23">{data[active].label}</text>
-            <text x={tooltipX + 12} y="41" className="temp-value">온도 {data[active].temperature.toFixed(1)}°C</text>
+            <text x={tooltipX + 12} y="41" className="temp-value">온도 {data[active].temperature}°C</text>
             <text x={tooltipX + 12} y="57" className="humidity-value">습도 {data[active].humidity}%</text>
           </g>
+        )}
+        {data.length === 0 && (
+          <text x={width / 2} y={height / 2} textAnchor="middle" className="axis-text">온도,습도 데이터를 기다리는 중입니다.</text>
         )}
       </svg>
     </div>
@@ -223,8 +308,210 @@ function SensorChart({ data }: { data: SensorPoint[] }) {
 }
 
 function SensorDashboard() {
-  const [period, setPeriod] = useState<'day' | 'week'>('day')
-  const data = period === 'day' ? hourlySensorData : weeklySensorData
+  const [chartSource, setChartSource] = useState<'supabase' | 'serial'>('supabase')
+  const [readings, setReadings] = useState<Reading[]>([])
+  const [supabaseStatus, setSupabaseStatus] = useState<SupabaseStatus>('loading')
+  const [supabaseError, setSupabaseError] = useState('')
+  const [serialStatus, setSerialStatus] = useState<SerialStatus>('disconnected')
+  const [serialError, setSerialError] = useState('')
+  const [livePoints, setLivePoints] = useState<SensorPoint[]>([])
+  const [rawSensorValue, setRawSensorValue] = useState<number | null>(null)
+  const [lastUpdated, setLastUpdated] = useState('')
+  const readingsRef = useRef<Reading[]>([])
+  const portRef = useRef<SerialPort | null>(null)
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
+  const mountedRef = useRef(false)
+  const latestReading = readings[readings.length - 1] ?? null
+  const latestSerialClimate = livePoints[livePoints.length - 1] ?? null
+
+  function mergeReadings(incoming: Reading[]) {
+    const byId = new Map<string, Reading>()
+    for (const reading of [...readingsRef.current, ...incoming]) byId.set(String(reading.id), reading)
+    const next = [...byId.values()]
+      .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))
+      .slice(-100)
+    readingsRef.current = next
+    setReadings(next)
+  }
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      const reader = readerRef.current
+      const port = portRef.current
+      if (reader) {
+        void reader.cancel().catch((error: unknown) => console.error('시리얼 리더 종료 실패:', error))
+      } else if (port) {
+        void port.close().catch((error: unknown) => console.error('시리얼 포트 종료 실패:', error))
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const url = import.meta.env.VITE_SUPABASE_URL
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    if (!url || !anonKey) {
+      setSupabaseStatus('error')
+      setSupabaseError('VITE_SUPABASE_URL 또는 VITE_SUPABASE_ANON_KEY가 설정되지 않았습니다.')
+      return
+    }
+
+    let active = true
+    let realtimeSyncStarted = false
+    const supabase = createClient(url, anonKey)
+    const loadLatestReadings = async () => {
+      const { data, error } = await supabase
+        .from('readings')
+        .select('id, value, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (!active) return
+      if (error) {
+        setSupabaseStatus('error')
+        setSupabaseError(`센서 기록 조회 실패: ${error.message}`)
+        return
+      }
+
+      const rows = Array.isArray(data) ? data.map(parseReading).filter((row): row is Reading => row !== null) : []
+      mergeReadings(rows)
+      setSupabaseStatus('connected')
+      setSupabaseError('')
+    }
+
+    const channel = supabase
+      .channel('sensor-readings-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'readings' }, (payload) => {
+        if (!active) return
+        const reading = parseReading(payload.new)
+        if (reading) mergeReadings([reading])
+      })
+      .subscribe((status, error) => {
+        if (!active) return
+        if (status === 'SUBSCRIBED') {
+          setSupabaseStatus('connected')
+          if (!realtimeSyncStarted) {
+            realtimeSyncStarted = true
+            void loadLatestReadings()
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setSupabaseStatus('error')
+          setSupabaseError(error?.message || `Supabase Realtime 구독 상태: ${status}`)
+        }
+      })
+    void loadLatestReadings()
+
+    return () => {
+      active = false
+      void supabase.removeChannel(channel)
+    }
+  }, [])
+
+  function updateFromSerialLine(line: string) {
+    const fields = line.trim().split(',').map((field) => field.trim())
+    if (fields.length === 1 && fields[0] !== '') {
+      const value = Number(fields[0])
+      if (!Number.isFinite(value)) {
+        setSerialError(`숫자로 읽을 수 없는 데이터입니다: ${line.trim()}`)
+        return
+      }
+      setRawSensorValue(value)
+    } else if (fields.length === 2 && fields.every((field) => field !== '')) {
+      const [temperature, humidity] = fields.map(Number)
+      if (!Number.isFinite(temperature) || !Number.isFinite(humidity)) {
+        setSerialError(`온도,습도 CSV 형식이 아닙니다: ${line.trim()}`)
+        return
+      }
+      const label = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date())
+      setLivePoints((current) => [...current, { label, temperature, humidity }].slice(-100))
+      setRawSensorValue(null)
+    } else {
+      if (line.trim()) setSerialError(`한 줄 숫자 또는 온도,습도 형식만 지원합니다: ${line.trim()}`)
+      return
+    }
+    setSerialError('')
+    setLastUpdated(new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date()))
+  }
+
+  async function readSerial(port: SerialPort) {
+    if (!port.readable) throw new Error('시리얼 포트에서 데이터를 읽을 수 없습니다.')
+    const reader = port.readable.getReader()
+    readerRef.current = reader
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done })
+          const lines = buffer.split(/\r?\n/)
+          buffer = lines.pop() ?? ''
+          lines.forEach(updateFromSerialLine)
+        }
+        if (done) break
+      }
+      if (buffer.trim()) updateFromSerialLine(buffer)
+    } finally {
+      reader.releaseLock()
+      readerRef.current = null
+      if (portRef.current === port) portRef.current = null
+      await port.close()
+      if (mountedRef.current) setSerialStatus('disconnected')
+    }
+  }
+
+  async function connectSerial() {
+    setSerialError('')
+    setSerialStatus('connecting')
+    let port: SerialPort | null = null
+    try {
+      const serial = (navigator as Navigator & { serial?: WebSerialApi }).serial
+      if (!serial) throw new Error('Web Serial API를 지원하는 Chrome 또는 Edge 브라우저에서 연결해 주세요.')
+      port = await serial.requestPort()
+      if (!mountedRef.current) return
+      portRef.current = port
+      await port.open({ baudRate: 9600 })
+      if (!mountedRef.current) {
+        portRef.current = null
+        await port.close()
+        return
+      }
+      setSerialStatus('connected')
+      await readSerial(port)
+    } catch (error) {
+      if (mountedRef.current) {
+        const message = error instanceof DOMException && error.name === 'NotFoundError'
+          ? '시리얼 포트 선택이 취소되었습니다.'
+          : error instanceof Error ? error.message : String(error)
+        setSerialError(message)
+        setSerialStatus('disconnected')
+      }
+      if (port && portRef.current === port && !readerRef.current) {
+        portRef.current = null
+        try {
+          await port.close()
+        } catch (closeError) {
+          if (mountedRef.current) {
+            setSerialError(`${error instanceof Error ? error.message : String(error)} (포트 종료 실패: ${closeError instanceof Error ? closeError.message : String(closeError)})`)
+          } else {
+            console.error('시리얼 포트 종료 실패:', closeError)
+          }
+        }
+      }
+    }
+  }
+
+  function disconnectSerial() {
+    const reader = readerRef.current
+    if (!reader) return
+    setSerialStatus('disconnecting')
+    void reader.cancel().catch((error: unknown) => {
+      if (mountedRef.current) setSerialError(error instanceof Error ? error.message : String(error))
+    })
+  }
+
   return (
     <main className="sensor-main">
       <section className="sensor-intro">
@@ -232,43 +519,69 @@ function SensorDashboard() {
           <p className="eyebrow">INDOOR CLIMATE MONITOR</p>
           <h1>온습도 센서<br /><em>실시간 모니터링</em></h1>
         </div>
-        <div className="sensor-status"><span /> 센서 정상 연결<small>마지막 업데이트 14:32:08</small></div>
+        <div className="sensor-status">
+          <span className={`sensor-status-dot ${supabaseStatus === 'connected' ? 'connected' : supabaseStatus === 'loading' ? 'connecting' : 'disconnected'}`} />
+          <div className="sensor-status-copy">
+            <strong>{supabaseStatus === 'connected' ? 'Supabase 실시간 연결됨' : supabaseStatus === 'loading' ? 'Supabase 연결 중' : 'Supabase 연결 오류'}</strong>
+            <small>{latestReading ? `마지막 기록 ${readingTime(latestReading.created_at, true)}` : supabaseStatus === 'connected' ? '센서 데이터 대기 중' : 'readings 테이블을 확인해 주세요.'}</small>
+          </div>
+          <div className="sensor-serial-actions">
+            {serialStatus === 'connected'
+              ? <button className="sensor-serial-button secondary" onClick={disconnectSerial}>연결 해제</button>
+              : <button className="sensor-serial-button" onClick={connectSerial} disabled={serialStatus !== 'disconnected'}>시리얼 연결</button>}
+          </div>
+        </div>
       </section>
 
       <section className="sensor-values">
         <article className="sensor-value-card temperature">
-          <div className="sensor-card-top"><span>현재 온도</span><b>적정</b></div>
-          <strong>23.4<small>°C</small></strong>
-          <div className="sensor-card-bottom"><span>오늘 최저 <b>20.8°C</b></span><span>오늘 최고 <b>25.8°C</b></span></div>
+          <div className="sensor-card-top"><span>현재 원시 센서값</span><b>{latestReading ? '실시간' : supabaseStatus === 'loading' ? '조회 중' : '대기'}</b></div>
+          <strong>{latestReading ? nf.format(latestReading.value) : '—'}</strong>
+          <div className="sensor-card-bottom"><span>최근 표시 <b>{readings.length} / 100개</b></span><span>측정 시각 <b>{latestReading ? readingTime(latestReading.created_at) : '—'}</b></span></div>
         </article>
         <article className="sensor-value-card humidity">
-          <div className="sensor-card-top"><span>현재 습도</span><b>쾌적</b></div>
-          <strong>54<small>%</small></strong>
-          <div className="sensor-card-bottom"><span>오늘 최저 <b>44%</b></span><span>오늘 최고 <b>61%</b></span></div>
+          <div className="sensor-card-top"><span>USB 시리얼 값</span><b>{serialStatus === 'connected' ? '연결됨' : '연결 안 됨'}</b></div>
+          <strong>{rawSensorValue !== null ? nf.format(rawSensorValue) : latestSerialClimate ? 'CSV' : '—'}{rawSensorValue !== null && <small>원시</small>}</strong>
+          <div className="sensor-card-bottom">
+            {latestSerialClimate
+              ? <><span>온도 <b>{latestSerialClimate.temperature}°C</b></span><span>습도 <b>{latestSerialClimate.humidity}%</b></span></>
+              : <><span>통신 속도 <b>9600 baud</b></span><span>최근 수신 <b>{lastUpdated || '—'}</b></span></>}
+          </div>
         </article>
         <article className="sensor-summary">
-          <div><span>체감 온도</span><strong>23.1°C</strong></div>
-          <div><span>이슬점</span><strong>13.6°C</strong></div>
-          <div><span>측정 간격</span><strong>5분</strong></div>
+          <div><span>데이터 테이블</span><strong>readings</strong></div>
+          <div><span>Realtime</span><strong>{supabaseStatus === 'connected' ? '구독 중' : supabaseStatus === 'loading' ? '연결 중' : '연결 오류'}</strong></div>
+          <div><span>저장 방식</span><strong>Supabase</strong></div>
         </article>
       </section>
 
       <section className="sensor-chart-card">
         <div className="sensor-chart-head">
-          <div><span className="section-number">01</span><h2>시간에 따른 변화</h2><p>온도와 상대습도 측정값 추이</p></div>
+          <div><span className="section-number">01</span><h2>센서값 추이</h2><p>{chartSource === 'supabase' ? 'readings 테이블의 최근 100개 원시값' : 'USB 시리얼에서 받은 온도와 습도 CSV'}</p></div>
           <div className="sensor-chart-actions">
-            <div className="sensor-legend"><span className="temp-dot" />온도 <span className="humidity-dot" />습도</div>
-            <div className="segmented">
-              <button className={period === 'day' ? 'active' : ''} onClick={() => setPeriod('day')}>24시간</button>
-              <button className={period === 'week' ? 'active' : ''} onClick={() => setPeriod('week')}>7일</button>
+            <div className="sensor-legend">
+              {chartSource === 'supabase'
+                ? <><span className="humidity-dot" />원시 센서값</>
+                : <><span className="temp-dot" />온도 <span className="humidity-dot" />습도</>}
+            </div>
+            <div className="segmented" aria-label="그래프 데이터 소스">
+              <button className={chartSource === 'supabase' ? 'active' : ''} onClick={() => setChartSource('supabase')}>Supabase</button>
+              <button className={chartSource === 'serial' ? 'active' : ''} onClick={() => setChartSource('serial')} disabled={livePoints.length === 0}>USB CSV</button>
             </div>
           </div>
         </div>
-        <SensorChart data={data} />
-        <div className="sensor-chart-note"><span>예시 데이터</span><small>실제 센서 연결 시 자동으로 최신 값이 반영됩니다.</small></div>
+        {chartSource === 'supabase'
+          ? <RawReadingsChart data={readings} />
+          : <SensorChart data={livePoints} live />}
+        {supabaseError && <p className="sensor-serial-error" role="status">{supabaseError}</p>}
+        {serialError && <p className="sensor-serial-error" role="status">{serialError}</p>}
+        <div className="sensor-chart-note">
+          <span>{chartSource === 'supabase' ? 'Supabase 실제 데이터' : 'Web Serial 데이터'}</span>
+          <small>{chartSource === 'supabase' ? '시간순으로 정렬된 최신 100개 value · 실제 숫자를 변환하지 않습니다.' : 'CSV 온도·습도는 입력된 값을 그대로 표시합니다.'}</small>
+        </div>
       </section>
 
-      <footer><span>환경 센서 대시보드</span><span>표시된 값은 예시 데이터입니다.</span></footer>
+      <footer><span>환경 센서 대시보드</span><span>Supabase readings · 최근 100개</span></footer>
     </main>
   )
 }
@@ -340,7 +653,7 @@ export default function App() {
           <button className={view === 'regions' ? 'active' : ''} onClick={() => setView('regions')}>지역 통계</button>
           <button className={view === 'sensor' ? 'active' : ''} onClick={() => setView('sensor')}>온습도 센서</button>
         </nav>
-        <div className="data-badge"><span /> {view === 'regions' ? '2025년 기준 · 단위: 명' : 'LIVE · 예시 데이터'}</div>
+        <div className="data-badge"><span /> {view === 'regions' ? '2025년 기준 · 단위: 명' : '온습도 센서 · 9600 baud'}</div>
       </header>
 
       {view === 'sensor' ? <SensorDashboard /> : <main>
