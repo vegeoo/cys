@@ -1,9 +1,9 @@
 # ProductHeader
 
-화면 최상단. 제품 이름, 컨셉, 설명을 `PRODUCT`에서 읽어 보여준다. 2열 레이아웃에서 전체 폭.
+작품의 정체성을 최소한의 텍스트로 보여 준다.
 
-- 이름 `t-display`(서브 폰트) `--ink` / 컨셉 `t-label` `--ink` / 설명 `t-body` `--ink-muted`, 최대 폭 640px
-- 간격: 이름과 컨셉 사이 space-1, 컨셉과 설명 사이 space-3
-- 비어 있으면 `[제품 이름]`, `[제품 컨셉, 한 줄]`, `[제품 설명, 2~3문장]`을 `--ink-muted`로
-- 바탕 위에 바로. 이름 위에 소제목 달지 않는다
-- `document.title`도 `PRODUCT.name`으로
+- 이름 `BREATH`는 `t-display`, 디스플레이 폰트, Soft Ivory
+- 컨셉 `숨의 흔적`은 `t-concept`, Soft Ivory
+- 설명 `보이지 않는 숨이 공간에 남기는 흔적`은 인용부호와 함께 `t-quote`, Mist Gray
+- 사각 배경, 장식 라벨, 아이콘을 사용하지 않는다.
+- `document.title`은 `BREATH — 숨의 흔적`으로 설정한다.

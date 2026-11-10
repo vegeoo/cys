@@ -1,8 +1,11 @@
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { DEVICE_ID, MAX_POINTS, SENSOR_MAX, SENSOR_MIN } from "../product"
+import { DEVICE_ID, MAX_POINTS } from "../product"
 import { db, IS_DEMO_MODE } from "./supabase"
 
-export type Reading = { value: number; created_at: string }
+export type Reading = {
+  value: number
+  created_at: string
+}
 export type Status = "disconnected" | "connecting" | "connected" | "error"
 
 type ConnectOptions = {
@@ -12,7 +15,6 @@ type ConnectOptions = {
 }
 
 let channel: RealtimeChannel | null = null
-let demoTimer: ReturnType<typeof setInterval> | null = null
 let demoPower = false
 
 function isReading(value: unknown): value is Reading {
@@ -23,30 +25,13 @@ function isReading(value: unknown): value is Reading {
   )
 }
 
-function createDemoReading(step: number): Reading {
-  const center = (SENSOR_MIN + SENSOR_MAX) / 2
-  const amplitude = (SENSOR_MAX - SENSOR_MIN) * 0.42
-  return {
-    value: Math.round(center + Math.sin(step / 7) * amplitude),
-    created_at: new Date().toISOString(),
-  }
-}
-
 export async function connectSensor(opts: ConnectOptions): Promise<void> {
   await disconnectSensor()
   opts.onStatus("connecting")
 
   if (IS_DEMO_MODE) {
-    let step = 0
-    const initial = Array.from({ length: 24 }, (_, index) =>
-      createDemoReading(index - 24),
-    )
-    opts.onInit(initial)
+    opts.onInit([])
     opts.onStatus("connected")
-    demoTimer = setInterval(() => {
-      opts.onReading(createDemoReading(step))
-      step += 1
-    }, 500)
     return
   }
 
@@ -96,10 +81,6 @@ export async function connectSensor(opts: ConnectOptions): Promise<void> {
 }
 
 export async function disconnectSensor(): Promise<void> {
-  if (demoTimer) {
-    clearInterval(demoTimer)
-    demoTimer = null
-  }
   if (channel) {
     await db.removeChannel(channel)
     channel = null

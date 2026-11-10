@@ -1,51 +1,53 @@
 # Tokens
 
-모든 값은 globals.css의 CSS 변수로 쓴다. Tailwind에서는 `bg-[var(--surface)]`, `text-[var(--ink)]`처럼 참조한다.
+모든 색, 크기, 간격과 전환 시간은 `styles/globals.css`의 CSS 변수로 정의한다.
 
-## Color (검은 바탕 한 테마)
+## Color
 
 | 토큰 | 값 | 용도 |
 | --- | --- | --- |
-| `--surface` | #000000 | 페이지 바탕. 모든 텍스트와 달은 이 위에 |
-| `--ink` | #eef0f3 | 본문, 제목, 제품 컨셉. 보조 버튼 채움 |
-| `--ink-muted` | #9a9ea7 | 보조 텍스트, 단위, 축, 자리표시 |
-| `--line` | #2a2d33 | 차트 그리드 전용 |
-| `--brand` | #2f5bff | **메인 컬러 슬롯 (기본값 블루).** 주 버튼, 토글 ON, 차트 선, 포커스. 14px 글자색으로 쓰지 않는다 (검정 위 4:1) |
-| `--on-brand` | #ffffff | brand 위 글자 |
-| `--off` | #5d6169 | 토글 OFF 트랙, 연결 안 됨 점 |
-| `--moon-glow` | #9db8ff | 센서값에 비례하는 달 주변 빛 |
-| `--status-on` | #4cc38a | "연결됨" (글자와 함께) |
-| `--danger` | #f97066 | 오류 (글자와 함께) |
+| `--sage-deep` | #26382f | 가장 어두운 자연색, 본문 대비 |
+| `--sage` | #708779 | 상태, 슬라이더, 식생 색 |
+| `--sage-soft` | #a9b8ad | 보조 정보 |
+| `--mist` | #d8ddd8 | 유리 김, 흐린 텍스트 |
+| `--ivory` | #f3f0e7 | 제목, 주요 정보 |
+| `--glass` | rgba(232, 237, 232, .2) | 기본 유리막 |
+| `--glass-fog` | rgba(232, 237, 232, .82) | 최대 결로 |
+| `--reflection` | rgba(255, 255, 255, .32) | 유리 반사광 |
+| `--status-on` | #dcebdc | 연결됨 |
+| `--danger` | #ffd4c8 | 오류 |
 
-메인 컬러를 바꾸면 `--on-brand`가 `--brand` 위 4.5:1 이상, `--brand`가 `--surface` 위 3:1 이상인지 확인.
+자연광 그라데이션, Canvas 안개와 물방울 RGB도 `--shade-*`, `--reflection-*`, `--fog-rgb`, `--drop-*-rgb`, `--clear-rgb` 토큰으로 정의한다. 컴포넌트 안에 색을 직접 쓰지 않는다.
 
 ## Type
 
-- 메인 폰트 Pretendard (400, 500, 600): 모든 글자
-- 서브 폰트 Rising CHAI (800): 제품 이름, 센서값 숫자에만
-- 자간, 행간은 지정하지 않는다 (폰트 기본값)
+- 메인 폰트 Pretendard 400, 500, 600
+- 디스플레이 폰트 Rising CHAI 800, 사용할 수 없으면 Pretendard 600
+- 수치는 tabular-nums
 
-| 이름 | 폰트 / size / weight | 용도 |
+| 이름 | 크기 | 굵기 | 용도 |
+| --- | --- | --- | --- |
+| display | clamp(44px, 9vw, 112px) | 800 | BREATH |
+| concept | clamp(18px, 2.4vw, 30px) | 500 | 숨의 흔적 |
+| quote | clamp(14px, 1.6vw, 18px) | 400 | 작품 문장 |
+| value | clamp(38px, 6vw, 72px) | 500 | 현재 습도 |
+| label | 13px | 500 | 상태, 컨트롤 |
+| caption | 12px | 400 | 보조 정보 |
+
+## Spacing
+
+`--space-1` 4, `--space-2` 8, `--space-3` 12, `--space-4` 16, `--space-6` 24, `--space-8` 32, `--space-12` 48, `--space-16` 64
+
+## Motion
+
+| 토큰 | 값 | 용도 |
 | --- | --- | --- |
-| display | 서브 / 40 / 800 | 제품 이름 (모바일 24) |
-| value | 서브 / 48 / 800, tabular-nums | 달 아래 현재 센서값 |
-| body | 메인 / 16 / 400 | 제품 설명, 빈 상태 문구 |
-| label | 메인 / 14 / 500 | 버튼, 상태, 컨트롤 이름, 제품 컨셉 |
-| caption | 메인 / 12 / 400 | 축, 단위, 켜짐/꺼짐 |
-
-## Spacing (px)
-
-`--space-1` 4, `--space-2` 8, `--space-3` 12, `--space-4` 16, `--space-6` 24, `--space-8` 32, `--space-12` 48
-
-- 페이지 여백: 모바일 위아래 32, 좌우 16 / 웹 위아래 48, 좌우 32
-- 섹션 사이: 모바일 32 / 웹 48
-- 컨트롤 행 사이: 24
-
-## Shape
-
-- 사각 요소: radius 0, 테두리 없음, 그림자 없음
-- 원형 요소(상태 점)만 원
+| `--ease-glass` | cubic-bezier(.22, .61, .36, 1) | 김 서림과 맑아짐 |
+| `--duration-glass` | 1600ms | 유리 상태 변화 |
+| `--duration-control` | 180ms | 버튼과 컨트롤 |
 
 ## Breakpoint
 
-768px 미만 1열(스마트폰), 이상 달 아래 컨트롤(1) + 차트(2) 2열. 콘텐츠 최대 폭 1120px 가운데 정렬.
+- 768px 미만은 정보와 컨트롤을 세로 배치한다.
+- 768px 이상은 작품 정보 좌상단, 습도와 상태 우상단, 컨트롤 하단에 배치한다.
+- 전체 화면 최소 높이는 100svh이고 375px에서 가로 스크롤이 없어야 한다.
