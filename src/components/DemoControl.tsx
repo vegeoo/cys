@@ -18,7 +18,7 @@ export default function DemoControl({ value, onChange }: Props) {
         step="1"
         value={roundedValue}
         aria-label="데모 습도"
-        onChange={(event) => onChange(Number(event.target.value))}
+        onInput={(event) => onChange(Number(event.currentTarget.value))}
       />
     </label>
   )

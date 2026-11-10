@@ -10,12 +10,14 @@ const statusCopy: Record<Status, string> = {
 type Props = {
   status: Status
   demoMode: boolean
+  sensorConfigured: boolean
   onToggle: () => Promise<void>
 }
 
 export default function ConnectionControl({
   status,
   demoMode,
+  sensorConfigured,
   onToggle,
 }: Props) {
   const connected = status === "connected"
@@ -28,6 +30,17 @@ export default function ConnectionControl({
           데모 모드
         </p>
         <p className="connection-detail t-caption">수동 습도 입력</p>
+      </div>
+    )
+  }
+
+  if (!sensorConfigured) {
+    return (
+      <div className="connection-control">
+        <p className="connection-status t-label" role="status">
+          <span aria-hidden="true" />
+          센서 설정 없음
+        </p>
       </div>
     )
   }

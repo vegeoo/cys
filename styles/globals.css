@@ -331,7 +331,7 @@
 
 .bottom-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 430px) minmax(240px, 360px);
+  grid-template-columns: minmax(280px, 430px) minmax(240px, 360px) auto;
   align-items: end;
   justify-content: space-between;
   gap: var(--space-12);
@@ -449,8 +449,48 @@
 
 .sensor-chart {
   width: min(360px, 100%);
+  grid-column: 2;
   justify-self: end;
   opacity: .78;
+}
+
+.demo-mode-toggle {
+  min-height: 44px;
+  grid-column: 3;
+  justify-self: end;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: left;
+  color: var(--mist);
+}
+
+.demo-mode-indicator {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--sage-soft);
+  transition: background var(--duration-control);
+}
+
+.demo-mode-toggle[aria-pressed="true"] .demo-mode-indicator {
+  background: var(--status-on);
+}
+
+.demo-mode-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-mode-copy strong {
+  color: var(--ivory);
+  font-weight: 500;
+}
+
+.demo-mode-copy small {
+  color: var(--sage-soft);
 }
 
 .sensor-chart svg {
@@ -505,7 +545,12 @@
   }
 
   .sensor-chart {
+    grid-column: 1;
     justify-self: start;
+  }
+
+  .demo-mode-toggle {
+    grid-column: 1;
   }
 
   .product-quote {

@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react"
 import BreathGlass from "./components/BreathGlass"
 import ConnectionControl from "./components/ConnectionControl"
 import DemoControl from "./components/DemoControl"
+import DemoModeToggle from "./components/DemoModeToggle"
 import HumidityDisplay from "./components/HumidityDisplay"
 import PowerToggle from "./components/PowerToggle"
 import ProductHeader from "./components/ProductHeader"
@@ -23,34 +24,40 @@ const initialDemoReading: Reading = {
 }
 
 export default function App() {
-  const [status, setStatus] = useState<Status>("disconnected")
+  const [sensorStatus, setSensorStatus] = useState<Status>("disconnected")
   const [power, setPower] = useState(false)
-  const [readings, setReadings] = useState<Reading[]>(
-    IS_DEMO_MODE ? [initialDemoReading] : [],
-  )
+  const [sensorReadings, setSensorReadings] = useState<Reading[]>([])
+  const [demoReadings, setDemoReadings] = useState<Reading[]>([
+    initialDemoReading,
+  ])
+  const [demoMode, setDemoMode] = useState(IS_DEMO_MODE)
 
-  const addReading = (row: Reading) => {
+  const normalizeReading = (row: Reading) => ({
+    ...row,
+    value: Math.min(SENSOR_MAX, Math.max(SENSOR_MIN, Number(row.value))),
+  })
+
+  const addSensorReading = (row: Reading) => {
+    const normalizedRow = normalizeReading(row)
+    setSensorReadings((current) =>
+      [...current, normalizedRow].slice(-MAX_POINTS),
+    )
+  }
+
+  const addDemoReading = (row: Reading) => {
     const normalizedRow = {
       ...row,
       value: Math.min(SENSOR_MAX, Math.max(SENSOR_MIN, Number(row.value))),
     }
-    setReadings((current) => [...current, normalizedRow].slice(-MAX_POINTS))
+    setDemoReadings((current) => [...current, normalizedRow].slice(-MAX_POINTS))
   }
 
   const startConnection = async () => {
     await connectSensor({
       onInit: (rows) =>
-        setReadings(
-          rows.map((row) => ({
-            ...row,
-            value: Math.min(
-              SENSOR_MAX,
-              Math.max(SENSOR_MIN, Number(row.value)),
-            ),
-          })),
-        ),
-      onReading: addReading,
-      onStatus: setStatus,
+        setSensorReadings(rows.map((row) => normalizeReading(row))),
+      onReading: addSensorReading,
+      onStatus: setSensorStatus,
     })
   }
 
@@ -63,9 +70,9 @@ export default function App() {
   }, [])
 
   const handleConnectionToggle = async () => {
-    if (status === "connected") {
+    if (sensorStatus === "connected") {
       await disconnectSensor()
-      setStatus("disconnected")
+      setSensorStatus("disconnected")
       return
     }
     await startConnection()
@@ -80,10 +87,27 @@ export default function App() {
   }
 
   const handleDemoHumidity = (value: number) => {
-    addReading({ value, created_at: new Date().toISOString() })
+    addDemoReading({ value, created_at: new Date().toISOString() })
   }
 
-  const humidity = readings.at(-1)?.value
+  const handleDemoModeToggle = () => {
+    if (!demoMode) {
+      setDemoMode(true)
+      return
+    }
+
+    setDemoMode(false)
+    if (
+      !IS_DEMO_MODE &&
+      sensorStatus !== "connected" &&
+      sensorStatus !== "connecting"
+    ) {
+      void startConnection()
+    }
+  }
+
+  const activeReadings = demoMode ? demoReadings : sensorReadings
+  const humidity = activeReadings.at(-1)?.value
   const level = humidity === undefined ? 0 : humidity / SENSOR_MAX
 
   return (
@@ -99,8 +123,9 @@ export default function App() {
           <div className="live-data">
             <HumidityDisplay value={humidity} />
             <ConnectionControl
-              status={status}
-              demoMode={IS_DEMO_MODE}
+              status={sensorStatus}
+              demoMode={demoMode}
+              sensorConfigured={!IS_DEMO_MODE}
               onToggle={handleConnectionToggle}
             />
           </div>
@@ -108,7 +133,7 @@ export default function App() {
 
         <div className="bottom-layout">
           <div className="interaction-controls">
-            {IS_DEMO_MODE && (
+            {demoMode && (
               <DemoControl
                 value={humidity ?? initialDemoReading.value}
                 onChange={handleDemoHumidity}
@@ -116,7 +141,8 @@ export default function App() {
             )}
             <PowerToggle power={power} onChange={handlePowerChange} />
           </div>
-          <SensorChart readings={readings} />
+          <SensorChart readings={activeReadings} />
+          <DemoModeToggle active={demoMode} onToggle={handleDemoModeToggle} />
         </div>
       </div>
     </main>
